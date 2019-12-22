@@ -18,17 +18,21 @@ class Camera extends PureComponent {
   }
 
   componentWillUnmount() {
+    this.stopStream();
+  }
+
+  isMediaStream = (stream) => {
+    if (stream) return stream.constructor.name === 'MediaStream';
+    return false;
+  }
+
+  stopStream = () => {
     const { stream } = this.state;
     if (this.isMediaStream(stream)) {
       stream.getTracks().forEach(function(track) {
         track.stop();
       });
     }
-  }
-
-  isMediaStream = (stream) => {
-    if (stream) return stream.constructor.name === 'MediaStream';
-    return false;
   }
 
   /**
