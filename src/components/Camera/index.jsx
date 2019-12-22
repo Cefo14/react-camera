@@ -17,6 +17,20 @@ class Camera extends PureComponent {
     this.initialize();
   }
 
+  componentWillUnmount() {
+    const { stream } = this.state;
+    if (this.isMediaStream(stream)) {
+      stream.getTracks().forEach(function(track) {
+        track.stop();
+      });
+    }
+  }
+
+  isMediaStream = (stream) => {
+    if (stream) return stream.constructor.name === 'MediaStream';
+    return false;
+  }
+
   /**
    * @returns {Object}
    */
@@ -120,7 +134,6 @@ class Camera extends PureComponent {
     context.drawImage(video, 0, 0, width, height);
 
     const img = canvas.toDataURL();
-    console.log(img)
     onTakePhoto(img);
   }
 
@@ -130,7 +143,7 @@ class Camera extends PureComponent {
         className="camera__container"
         ref={this.getSectionRef()}
       >
-        <video ref={this.getVideoRef()} />
+        <video ref={this.getVideoRef()} className="camera" />
         <div className="camera__button-container">
           <button
             type="button"

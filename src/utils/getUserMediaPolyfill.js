@@ -28,7 +28,6 @@
   // with getUserMedia as it would overwrite existing properties.
   // Here, we will just add the getUserMedia property if it's missing.
   if(navigator.mediaDevices.getUserMedia === undefined) {
-    alert(';v');
     navigator.mediaDevices.getUserMedia = promisifiedOldGUM;
   }
 })();
