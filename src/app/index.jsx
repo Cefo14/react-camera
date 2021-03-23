@@ -1,10 +1,9 @@
 import React from 'react';
-import Screen from '../containers/Screen';
 
-import './style.css';
+import PhotoCamera from '../containers/PhotoCamera';
 
 const App = () => (
-  <Screen />
+  <PhotoCamera />
 );
 
 export default App;

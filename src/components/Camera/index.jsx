@@ -1,184 +1,129 @@
-import React, { PureComponent, createRef } from 'react';
+import React, {
+  memo,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+  useEffect,
+} from 'react';
 import PropTypes from 'prop-types';
 
-import '../../utils/getUserMediaPolyfill';
-import './style.css';
+import useStyles from './useStyles';
 
-class Camera extends PureComponent {
-  constructor(...props) {
-    super(...props);
-    this.sectionRef = createRef(null);
-    this.videoRef = createRef(null);
-    this.stream = null;
-    this.state = { stream: null };
-  };
-  
-  componentDidMount() {
-    this.initialize();
-  }
+const Camera = ({
+  onPhoto,
+  onError,
+}) => {
+  const classes = useStyles();
 
-  componentWillUnmount() {
-    this.stopStream();
-  }
+  const [stream, setStream] = useState(null);
+  const videoRef = useRef(null);
 
-  isMediaStream = (stream) => {
-    if (stream) return stream.constructor.name === 'MediaStream';
-    return false;
-  }
-
-  stopStream = () => {
-    const { stream } = this.state;
-    if (this.isMediaStream(stream)) {
-      stream.getTracks().forEach(function(track) {
-        track.stop();
-      });
-    }
-  }
-
-  /**
-   * @returns {Object}
-   */
-  getSectionRef = () => this.sectionRef;
-
-  /**
-   * @returns {Object}
-   */
-  getVideoRef = () => this.videoRef;
-
-  /**
-   * @param {MediaStream}
-   */
-  setStream = (stream) => this.setState(() => ({ stream }));
-
-  /**
-   * @returns {MediaStream}
-   */
-  getStream = () => this.state.stream;
-
-  /**
-   * @returns {Boolean}
-   */
-  isFrontCamera = () => {
-    const { useFrontCamera } = this.props;
-    return useFrontCamera;
-  };
-
-  /**
-   * @returns {Boolean}
-   */
-  cameraIsReady = () => Boolean(this.state.stream);
-
-  /**
-   * @returns {String}
-   */
-  getCameraMode = () => this.isFrontCamera() ? "user" : "environment";
-
-  /**
-   * @returns {Object}
-   */
-  getVideoSize = () => {
-    const section = this.getSectionRef().current;
-    return {
-      width: { ideal: section.offsetWidth },
-      height: { ideal: section.offsetHeight },
-    };
-  }
-
-  /**
-   * wait permission for the camera
-   * the video will have the size of the container
-   * Stream MediaStream into the video reference
-   * play video
-   * in case of error trigger the onError event
-   */
-  initialize = async () => {
-    const { onCamera, onError } = this.props;
-    const facingMode = this.getCameraMode();
-
+  const startRecording = useCallback(async () => {
+    const facingMode = 'environment';
     try {
-      const videoSize = this.getVideoSize();
-      const config = { audio: false, video: { facingMode, ...videoSize } };
-      const stream = await navigator.mediaDevices.getUserMedia(config)
-      this.setStream(stream);
-      onCamera(stream);
-      this.playVideo();
+      const config = {
+        audio: false,
+        video: {
+          facingMode,
+        },
+      };
+      const _stream = await navigator.mediaDevices.getUserMedia(config);
+      videoRef.current.srcObject = _stream;
+      setStream(_stream);
     }
 
-    catch (err) {
-      onError(err);
+    catch (e) {
+      onError(e);
     }
-  };
-  
+  }, [videoRef, onError]);
 
-  /**
-   * set stream MediaStream into the video
-   * play video
-   */
-  playVideo = () => {
-    const stream = this.getStream();
-    const video = this.getVideoRef().current;
-    const { onPlay } = this.props;
+  const stopStream = useCallback(() => {
+    if (!stream) return;
+    stream.getTracks().forEach((track) => {
+      track.stop();
+    });
+  }, [stream]);
 
-    video.srcObject = stream;
-    video.play();
-    onPlay(video);
-  }
+  const stopRecording = useCallback(() => {
+    const { current } = videoRef;
+    if (current) current.srcObject = null;
+    stopStream();
+    setStream(null);
+  }, [videoRef, stopStream]);
 
-  onTakePicture = () => {
-    const { onTakePhoto } = this.props;
+  const createCanvasScreenShot = useCallback(() => {
     const canvas = document.createElement('canvas');
 
-    const video = this.getVideoRef().current;
-    const width = video.offsetWidth
-    const height = video.offsetHeight;
+    const video = videoRef.current;
+    const { width, height } = window.screen; // Device Width
+
     canvas.width = width;
     canvas.height = height;
 
     const context = canvas.getContext('2d');
     context.drawImage(video, 0, 0, width, height);
 
-    const img = canvas.toDataURL();
-    onTakePhoto(img);
-  }
+    return canvas;
+  }, [videoRef]);
 
-  render() {
-    return (
-      <section
-        className="camera__container"
-        ref={this.getSectionRef()}
-      >
-        <video ref={this.getVideoRef()} className="camera" />
-        <div className="camera__button-container">
-          <button
-            type="button"
-            className="camera__button-button"
-            onClick={
-              this.cameraIsReady()
-                ? this.onTakePicture
-                : () => {}
-            }>
-            <div className="camera__button-circle" />
-          </button>
-        </div>
-      </section>
-    );
-  }
-}
+  const takePhoto = useCallback((event) => {
+    const canvas = createCanvasScreenShot();
+    stopRecording();
+    canvas.toBlob((blob) => {
+      onPhoto(event, blob);
+    });
+  }, [createCanvasScreenShot, stopRecording, onPhoto]);
+
+  const isRecording = useMemo(() => (
+    Boolean(stream)
+  ), [stream]);
+
+  useEffect(() => {
+    startRecording();
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('beforeunload', stopStream, false);
+    return () => {
+      stopStream();
+      window.removeEventListener('beforeunload', stopStream, false);
+    };
+  }, [stopStream]);
+
+  return (
+    <div className={classes.container}>
+      { /* eslint-disable-next-line jsx-a11y/media-has-caption */ }
+      <video
+        ref={videoRef}
+        className={classes.video}
+        autoPlay
+      />
+      <div className={classes.buttonContainer}>
+        <button
+          className={classes.button}
+          type="button"
+          onClick={
+            isRecording
+              ? takePhoto
+              : startRecording
+          }
+        >
+          <div className={classes.buttonCamera} />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 Camera.propTypes = {
-  useFrontCamera: PropTypes.bool,
-  onCamera: PropTypes.func, // when the camera is ready send stream
-  onPlay: PropTypes.func, // when the video is ready send video
-  onTakePhoto: PropTypes.func, // when take a photo send toDataURL
-  onError: PropTypes.func, // when error send error
+  onPhoto: PropTypes.func,
+  onError: PropTypes.func,
 };
 
 Camera.defaultProps = {
-  useFrontCamera: false,
-  onCamera: () => {},
-  onPlay: () => {},
-  onTakePhoto: () => {},
+  onPhoto: () => {},
   onError: () => {},
 };
 
-export default Camera;
+export default memo(Camera);

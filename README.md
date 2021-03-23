@@ -1,4 +1,12 @@
-# react-camera
-camera to take screnshoots
+# React-Camera
 
-![screenShot](https://cdn1.imggmi.com/uploads/2019/10/13/56f4105531c118291c9d0729ba4e007f-full.png)
+## Example 
+![example](/README/example.gif)
+
+## Screenshot Storybooks
+
+### Camera
+![camera](/README/camera_storybooks.png)
+
+### Preview
+![preview](/README/preview_storybooks.png)
