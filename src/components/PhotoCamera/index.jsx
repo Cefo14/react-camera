@@ -5,8 +5,8 @@ import React, {
   useMemo,
 } from 'react';
 
-import Camera from '../../components/Camera';
-import Preview from '../../components/Preview';
+import Camera from '../Camera';
+import Preview from '../Preview';
 
 import useStyles from './useStyles';
 

@@ -1,9 +1,15 @@
 import React from 'react';
 
-import PhotoCamera from '../containers/PhotoCamera';
+import PhotoCamera from '../components/PhotoCamera';
 
 const App = () => (
-  <PhotoCamera />
+  <div
+    style={{
+      height: '100vh',
+    }}
+  >
+    <PhotoCamera />
+  </div>
 );
 
 export default App;

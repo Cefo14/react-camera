@@ -11,6 +11,9 @@ import PropTypes from 'prop-types';
 import useStyles from './useStyles';
 
 const Camera = ({
+  facingMode,
+  widthIdeal,
+  heightIdeal,
   onPhoto,
   onError,
 }) => {
@@ -20,11 +23,12 @@ const Camera = ({
   const videoRef = useRef(null);
 
   const startRecording = useCallback(async () => {
-    const facingMode = 'environment';
     try {
       const config = {
         audio: false,
         video: {
+          width: { ideal: widthIdeal },
+          height: { ideal: heightIdeal },
           facingMode,
         },
       };
@@ -36,7 +40,7 @@ const Camera = ({
     catch (e) {
       onError(e);
     }
-  }, [videoRef, onError]);
+  }, [facingMode, widthIdeal, heightIdeal, videoRef, onError]);
 
   const stopStream = useCallback(() => {
     if (!stream) return;
@@ -52,11 +56,22 @@ const Camera = ({
     setStream(null);
   }, [videoRef, stopStream]);
 
+  const resetRecording = useCallback(() => {
+    startRecording();
+    startRecording();
+  }, [startRecording, startRecording]);
+
   const createCanvasScreenShot = useCallback(() => {
     const canvas = document.createElement('canvas');
 
     const video = videoRef.current;
-    const { width, height } = window.screen; // Device Width
+    const videoTrackSettings = stream
+      ?.getVideoTracks()
+      ?.find((track) => track.readyState === 'live')
+      ?.getSettings();
+
+    const width = videoTrackSettings ? videoTrackSettings.width : window.screen.width;
+    const height = videoTrackSettings ? videoTrackSettings.height : window.screen.height;
 
     canvas.width = width;
     canvas.height = height;
@@ -65,7 +80,7 @@ const Camera = ({
     context.drawImage(video, 0, 0, width, height);
 
     return canvas;
-  }, [videoRef]);
+  }, [videoRef, stream]);
 
   const takePhoto = useCallback((event) => {
     const canvas = createCanvasScreenShot();
@@ -82,6 +97,10 @@ const Camera = ({
   useEffect(() => {
     startRecording();
   }, []);
+
+  useEffect(() => {
+    resetRecording();
+  }, [facingMode, widthIdeal, heightIdeal]);
 
   useEffect(() => {
     window.addEventListener('beforeunload', stopStream, false);
@@ -117,11 +136,17 @@ const Camera = ({
 };
 
 Camera.propTypes = {
+  facingMode: PropTypes.oneOf(['user', 'environment']),
+  widthIdeal: PropTypes.number,
+  heightIdeal: PropTypes.number,
   onPhoto: PropTypes.func,
   onError: PropTypes.func,
 };
 
 Camera.defaultProps = {
+  facingMode: 'environment',
+  widthIdeal: 1920,
+  heightIdeal: 1080,
   onPhoto: () => {},
   onError: () => {},
 };
